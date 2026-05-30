@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>noah@portfolio:~</title>
+    <style>
+        :root {
+            --bg-color: #000000;
+            --text-color: #cccccc;
+            --prompt-color: #00ff00;
+            --highlight-color: #00ffff;
+            --error-color: #ff3333;
+            --font-family: 'Courier New', Courier, monospace;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: clamp(12px, 2.5vw, 16px);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 12px;
+            overflow-x: hidden;
+            text-shadow: 0 0 2px rgba(204,204,204,0.3);
+            cursor: text;
+            padding-bottom: 160px;
+        }
+
+        #terminal-container {
+            max-width: 900px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        #output {
+            margin-bottom: 10px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .prompt {
+            color: var(--prompt-color);
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0,255,0,0.4);
+        }
+
+        .highlight {
+            color: var(--highlight-color);
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0,255,255,0.4);
+        }
+
+        .error { color: var(--error-color); }
+
+        .ascii-art {
+            color: var(--prompt-color);
+            white-space: pre;
+            font-size: clamp(5px, 1.2vw, 14px);
+            line-height: 1.2;
+            margin-bottom: 0;
+            overflow-x: hidden;
+        }
+
+        .logo-portrait-wrapper {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 20px;
+            overflow-x: hidden;
+        }
+
+        .logo-left { flex-shrink: 0; }
+
+        .portrait-right {
+            color: var(--prompt-color);
+            white-space: pre;
+            font-size: clamp(2px, 0.55vw, 6px);
+            line-height: 1.1;
+            text-shadow: 0 0 3px rgba(0,255,0,0.3);
+            flex-shrink: 0;
+            overflow: hidden;
+        }
+
+        #input-line {
+            display: flex;
+            align-items: center;
+            flex-wrap: nowrap;
+        }
+
+        #prompt-text { margin-right: 8px; white-space: nowrap; flex-shrink: 0; }
+
+        #input-display {
+            display: flex;
+            align-items: center;
+            flex: 1;
+            min-width: 0;
+        }
+
+        #typed-input {
+            color: var(--text-color);
+            word-break: break-all;
+            white-space: pre-wrap;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 9px;
+            height: 1.1em;
+            background-color: var(--text-color);
+            vertical-align: text-bottom;
+            animation: blink 1s step-end infinite;
+            flex-shrink: 0;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        #hidden-input {
+            position: absolute;
+            opacity: 0;
+            top: -9999px;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+        }
+
+        .matrix-mode { color: #00ff00 !important; text-shadow: 0 0 5px rgba(0,255,0,0.8); }
+        .matrix-mode .highlight, .matrix-mode .prompt, .matrix-mode .cursor {
+            color: #00ff00 !important;
+            background-color: #00ff00 !important;
+        }
+
+        a { color: var(--highlight-color); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        .css-typing-line {
+            display: block;
+            width: max-content;
+            max-width: 100%;
+            clip-path: inset(0 100% 0 0);
+            animation: typing-clip 0.3s steps(40, end) forwards;
+            white-space: pre-wrap;
+        }
+
+        @keyframes typing-clip {
+            0% { clip-path: inset(0 100% 0 0); }
+            100% { clip-path: inset(0 0 0 0); }
+        }
+
+        .css-detype-line {
+            display: block;
+            width: max-content;
+            max-width: 100%;
+            clip-path: inset(0 0 0 0);
+            animation: detype-clip 0.2s steps(30, end) forwards;
+            white-space: pre-wrap;
+        }
+
+        @keyframes detype-clip {
+            0% { clip-path: inset(0 0 0 0); }
+            100% { clip-path: inset(0 100% 0 0); }
+        }
+
+        #mobile-bar {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #0a0a0a;
+            border-top: 1px solid #1a3a1a;
+            padding: 8px 8px 12px;
+            z-index: 100;
+        }
+
+        #mobile-input-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        #mobile-prompt {
+            color: var(--prompt-color);
+            font-family: var(--font-family);
+            font-size: 13px;
+            white-space: nowrap;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(0,255,0,0.4);
+        }
+
+        #mobile-text-input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            border-bottom: 1px solid #00ff0044;
+            color: var(--text-color);
+            font-family: var(--font-family);
+            font-size: 13px;
+            outline: none;
+            padding: 2px 4px;
+            caret-color: var(--prompt-color);
+        }
+
+        #mobile-send-btn {
+            background: #001a00;
+            border: 1px solid #00ff0066;
+            color: var(--prompt-color);
+            font-family: var(--font-family);
+            font-size: 13px;
+            padding: 4px 10px;
+            cursor: pointer;
+            border-radius: 3px;
+            white-space: nowrap;
+        }
+
+        #mobile-send-btn:active { background: #003300; }
+
+        #mobile-shortcuts {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .shortcut-btn {
+            background: #001a00;
+            border: 1px solid #00ff0033;
+            color: #00cc00;
+            font-family: var(--font-family);
+            font-size: 11px;
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            white-space: nowrap;
+            transition: background 0.1s, border-color 0.1s;
+        }
+
+        .shortcut-btn:active {
+            background: #003300;
+            border-color: #00ff00;
+            color: #00ff00;
+        }
+
+        @media (max-width: 768px), (hover: none) {
+            #mobile-bar { display: block; }
+            body { padding-bottom: 130px; font-size: 13px; }
+            .portrait-right { display: none; }
+            .logo-portrait-wrapper { flex-direction: column; }
+            .ascii-art { font-size: clamp(4px, 2.2vw, 10px); }
+        }
+
+        @media (max-width: 480px) {
+            body { padding: 8px; padding-bottom: 130px; }
+            .ascii-art { font-size: clamp(3.5px, 1.9vw, 8px); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="terminal-container">
+    <div id="output"></div>
+    <div id="input-line" style="display:none;">
+        <span class="prompt" id="prompt-text">noah@portfolio:~$</span>
+        <div id="input-display">
+            <span id="typed-input"></span><span class="cursor"></span>
+        </div>
+    </div>
+</div>
+
+<input type="text" id="hidden-input" autocomplete="off" spellcheck="false" autocapitalize="off" autocorrect="off">
+
+<div id="mobile-bar">
+    <div id="mobile-input-row">
+        <span id="mobile-prompt">noah@portfolio:~$</span>
+        <input type="text" id="mobile-text-input" autocomplete="off" spellcheck="false"
+               autocapitalize="off" autocorrect="off" placeholder="type a command...">
+        <button id="mobile-send-btn">↵</button>
+    </div>
+    <div id="mobile-shortcuts">
+        <button class="shortcut-btn" data-cmd="help">help</button>
+        <button class="shortcut-btn" data-cmd="about">about</button>
+        <button class="shortcut-btn" data-cmd="education">education</button>
+        <button class="shortcut-btn" data-cmd="socials">socials</button>
+        <button class="shortcut-btn" data-cmd="ls">ls</button>
+        <button class="shortcut-btn" data-cmd="whoami">whoami</button>
+        <button class="shortcut-btn" data-cmd="clear">clear</button>
+    </div>
+</div>
+
+<script>
+    const terminalOutput = document.getElementById('output');
+    const inputLine      = document.getElementById('input-line');
+    const typedInput     = document.getElementById('typed-input');
+    const hiddenInput    = document.getElementById('hidden-input');
+    const mobileInput    = document.getElementById('mobile-text-input');
+    const mobileSend     = document.getElementById('mobile-send-btn');
+
+    const promptText = '<span class="prompt">noah@portfolio:~$</span> ';
+    let isTyping = true;
+    let commandHistory = [];
+    let historyIndex = -1;
+
+    const asciiLogo = `
+  _   _  ___    _    _   _     _    ____  _   _ ____ _____  _   
+ | \\ | |/ _ \\  / \\  | | | |   / \\  |  _ \\| | | / ___|_   _|/ \\  
+ |  \\| | | | |/ _ \\ | |_| |  / _ \\ | |_) | | | \\___ \\ | | / _ \\ 
+ | |\\  | |_| / ___ \\|  _  | / ___ \\|  __/| |_| |___) || |/ ___ \\
+ |_| \\_|\\___/_/   \\_\\_| |_|/_/   \\_\\_|    \\___/|____/ |_/_/   \\_\\
+                                                                `;
+
+    const bootSequence = [
+        "Welcome to Noah's personal portfolio website.",
+        "Version 2.0.0",
+        "",
+        asciiLogo,
+        "",
+        "Type '<span class=\"highlight\">help</span>' to see available commands.",
+        ""
+    ];
+
+    const fileSystem = {
+        "about": `Hi, I'm <span class="highlight">Noah Apusta</span>, a student at Universitas Padjadjaran with a growing passion for global supply chain management, logistics, and technology. I am fascinated by how products, information, and resources move across countries and continents, connecting businesses and consumers in an increasingly globalized world. My academic journey has inspired me to explore the complex systems that drive international trade, supply chain operations, and business efficiency.
+
+Currently, I am focused on learning the fundamentals of global supply chains, logistics management, and business operations while also expanding my knowledge of technology and digital transformation. I enjoy studying how modern organizations use data, automation, and innovative technologies to optimize processes, improve decision-making, and create more resilient supply networks. The intersection of business and technology is where I find the most excitement, as it offers endless opportunities to solve real-world challenges and drive meaningful improvements.
+
+Beyond my formal education, I actively explore topics such as data analysis, automation, artificial intelligence, digital systems, and emerging technologies. I believe that technology plays a crucial role in shaping the future of supply chains, enabling organizations to operate more efficiently, adapt to changing market conditions, and deliver greater value to customers. As a result, I am constantly seeking new knowledge, experimenting with tools, and developing practical skills that can help bridge the gap between business operations and technological innovation.
+
+I am particularly interested in understanding how data-driven decision-making can improve logistics performance, inventory management, procurement strategies, and overall supply chain visibility. By combining analytical thinking with technological expertise, I hope to contribute to solutions that make global operations smarter, more sustainable, and more efficient. I enjoy learning how businesses leverage modern software, automation platforms, and digital technologies to streamline workflows and enhance productivity across different industries.
+
+In addition to my academic and technical interests, I value continuous learning, curiosity, and personal growth. I enjoy exploring new ideas, tackling complex problems, and gaining insights from different fields of study. Whether I am researching supply chain trends, learning about emerging technologies, or working on personal projects, I am always motivated by the opportunity to expand my understanding and develop new capabilities.
+
+My long-term goal is to build a career that combines logistics, business strategy, technology, and innovation. I aspire to contribute to organizations that embrace digital transformation and use technology to create more connected, efficient, and sustainable global supply chains. As I continue my journey, I remain committed to learning, adapting, and growing in a world where technology and business are becoming increasingly interconnected.`,
+
+        "education": `--- Education ---
+
+<span class="highlight">SD:</span> SDS TADIKA PURI
+<span class="highlight">SMP:</span> SMP Strada Bhakti Wiyata
+<span class="highlight">SMA:</span> SMA Perguruan Rakyat 2
+<span class="highlight">Universitas:</span> Universitas Padjadjaran (D4 BISNIS LOGISTIK)`,
+
+        "socials": `--- Social Links ---
+
+<span class="highlight">GitHub:</span>      <a href="https://github.com/noahworkandlearnspace-dev" target="_blank">github.com/noahworkandlearnspace-dev</a>
+<span class="highlight">LinkedIn:</span>    <a href="https://www.linkedin.com/in/noah-nathanael-runtuwene-2951203b5" target="_blank">linkedin.com/in/noah-nathanael-runtuwene</a>
+<span class="highlight">Instagram:</span>   <a href="https://www.instagram.com/noah.apusta?igsh=MWg5dDZ1ZXBzNzFueg==" target="_blank">@noah.apusta</a>
+<span class="highlight">YT Music:</span>    <a href="https://music.youtube.com/@akunyoutbeakunyoutbe7-b5z" target="_blank">@akunyoutbeakunyoutbe7-b5z</a>`,
+
+        "help": `Available Commands:
+
+  [<span class="highlight">about</span>]       Learn more about me
+  [<span class="highlight">education</span>]   View my academic background
+  [<span class="highlight">socials</span>]     Links to my profiles & contact
+  [<span class="highlight">clear</span>]       Clear the terminal screen
+  [<span class="highlight">help</span>]        Show this help menu`
+    };
+
+    const portraitArt = `%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+###%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+######%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+#######%%%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+######***##%%%%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@
+*######**######%%%%%%@@@%%%@%@@@%%%@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@%#****#@@@@@@@@@@@@@@@@@@@@@@@@@@
+#**###%##*#####%%%%%%%%%%%%%%%%#==+#%@@@@@%%@@@@@@@@@@@@@@@@@@@@@@#***+*##%@@@@@@@@@@@@@@@@@@@@@@@@@
+######%#*****###%%%#%%%%%%%%%%%+++++#%%%%%%@@@@@@@@@@@@@@@@@@@@@%***+++**#%@@@@@@@@@@@@@@@@@@@@@@@@@
+***###%#********##%##%%%#%%%%%%*+++++*%%%%%%@@@%@@@@@@@@@%%@@@@%+*+++++**#%@@@@@@@@@@@@@@@@@@@@@@@@@
+#***####*******+**###%%%#%%%%%#+====++*%%%%%%%%@@%%%%%%%%%%%%@#***+++++**#%@@@@@@@@@@@@@@@@@@@@@@%%@
+@%%%###********+++*##%%%#%%%#%#+===++++*%%%%%%%%%%%%%%%%%%%%%#+**++++++***%@@@@@@@@@@@@@@@@@@@@@%%@%
+@@@@@@%%##*****++++***#%##%%#%#*++++++***%%%%%%%%%%%%%%%%%%%#***++++++***#%%%@@@@@@@@@@@@@@@@@%@%@@%
+%%%%%@@@@@@@%%*++++**+*###%%###*+==+++*#####**##****###**###*#****+++++++#%%%%%%%%@@%%@@%*%@%%%@%@@%
+@%%%%%@@%%%@@@@@@%%#++++*#%%##%#+==+++****+*+==#++*+*++*+++***#****+++++*%%%%%%%%%%@##%@%*%@%#%@%@@%
+@%%%%%%@%%%%%%%%%%%%%+*%#*####%%*==++*+--+#*=-=*#+*#***+===*#+==**+++++*##%%%%%%%%%%##%@#*%@@#@%%@@@
+@%%%%%%@@%%%%%%%###%%#%%%%%%%%%%#++*+=---=#*======+++++++==*#+--=+**++*#%#%%%%%%%%%%#%%%#*%@@#@%%@@@
+@%%%%%%@@%%%%%%####%%%%%%%%%%%@%#+++#%#*+===-=+====+==+++======+**++***#%%%%%%%%%%%%#%%%##%@@%@@@@@@
+@%%%%%%@@%%%%%**##%%##%#%##%%%%%*+*%%%@@@@*---======+==+=---*%@@@@@#++#%%%%%%%%%%%%%#%%%%%@@@@@@@@@@
+@%%%%%%@@@%#%%++*####*#%###%%##*+=+#*@%%%%@%=:-+=+++=+==-:=%%##*@%%%***#%%%@@@@@@@@@@@@@@@@@@@@@@@%@
+@@%%%%%%@@%%%%*+*####*####*%%#*=-:-*+%@@@%*#*:====+*++==:-%+#@@@@%*#---+%@@@@@@@@@@@@@@@@@@@@@@@@@#@
+@@%%%%%%%%%##%#+*#########+%##*++=--=++**+*%*============+%#**%%%#*-:-+*#%@@%%@@%@@@#@@%#%@@%%%%@%#@
+@@%%%%%%%%%%#%#+*####*####+##***++++=--::-+**++===---==++##*=-----==++**#%@@%%@@%@@%#@@%*%@@%%%%%%%@
+@@%%%%%%%%%%%##+*####*######*+=+*+++++++=+*++*+========+***#*+=+++++*****#%%%%%@%@@%#@@%*%@%%%#@%%%%
+%%%%%%%%%%%%%##%%###########+=+*++**+=+++====+*#****+****==+++=+++****+++#%%%%%%%@@%#@@%+%%%#%%@@@@@
+%%%%%%%%%%%%%%%%%%%%%%#####***#####++++===--=###*++++**##+--===+++****#*++#%%@@@@@@@@%%%%@@@@@@@@@@@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%*+====+*++***++--::=#%#***@#+-:--=+++++**+=+*##%@@@@@@@@@@%@@@@@@@@@@@@@@
+@@@@@%%%@@%%%%%%%%%%%%%%%%%#+=====+++=-===--:..:+#%#%*:..::-====++++===+**%@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@@@@@@@@@@@@@%%%%%%%%%%%##+=-========----:::::-*%%+-::::::--==++==++*++*@@@@@@@@@@@@@@@@@%%##%@@@@
+@@@@@@@@@@@@@@@%%%%%%#%%%%#*=-----===------:---:-+*+=--------=========-=+#%@@@@@@@@@@@@@@%%#####%@@@
+@@@@@@@@@@@@@@%%%%%%%%%%##*#*++--:::-==+++=====++**#*+=====++++=-------=+*#%%#%%%%%%%%%%%%######%@@@
+@@@@@@@@@@@@@@%%%%%%%######*==========+++++++++==-=====++++*+==-------=+***+*****#*+#**###%%%%##@@@@
+@@@@@@@@@@@@%%%%%%#####*+++====+====+++++++++++========+++============+++*#####**#######%%%%##%%@@@@
+%%%%%%%%%%%%###******+****+=-============+++++++++**+*+====-----======+*******##%#%%####%%%####%%%%@
+%%%%%%%######*************+====++==-------======+=++-==----------====++*######*#%%%#*##%%%########%%
+%%%#%%######**************++===+*+==-------------::-=------------===+*****####**#%%####%%%%#########
+%%#########*****#**###***++++=====+===--------:=+::-+-----=-----===+*#**+*##############%%%#########
+%%##%#############*****+===+++==--=++=====----=+----=-------====+*****+++*#%%##%########%%%###%%%%%%
+%###############***+==--==++***+=====+***++==+++----+=======+*******+++++*#%%%%%%################%%%
+%%%%%%#####***#*++++==---**+*####**+=+++***+++======+++++***####*+====++*###%%%%%%%%%%%%###########%
+%%%######*##*+++=+**+==++*#***##%%%###**++++++=+++==*+=++++**+++++==++*###**%%%%%%%%%##############%
+%#####+=++=+++*+==*******#####*####%%%#####****++*++*+++++++++++++=++*####**%%%%%%%#################
+@@%%%%+++++****+++++****#%%#####**##%%%%%%%###****++****+*++***+****##****#%%%%%%%%%################
+@@%%#*##**+*#*++++++****###%%%#####*#*########****+++*#%#############****#%@@%%%%%%%################
+@@#*++*#%%%#####********##%%%#%%%######*********++++++*#%%#%%%##****+***#%%@@@%%%%%#################
+@@%#*++**##%%%######***###%%%%%%%%%%######***++*+++++++******##*******##%%%@@%%%%%%%################
+@@@%%***###%%%%%##########%%%%%%%%%%%%######*+**+++*+*+*#*+*+**#*****##%%%@@@%%%%%%%################
+%%@@@@@@@%#%%%%%%########%%%%%%%@@@@@%%%%####******#*****#*****#######%%%%@@%%%%%%%#################
+%%%@@@@@@%%%%%%%%%%%#####%%%%%%@%%%%%%%%%%%######**###*****#####%%%%%%%@@@@@%%%%%%%#################
+%%@@@@@@@@@@%%%%%%%%%####%%%@@@@@%%%%%%%%%%%###############%%%%%%%%%@@@@@@@@%%%%%%%%################
+%@@@@@@@@@@@@@%%%%%%%%###%%@@@@@@@@%%%%@@@%%######%########%@@@%%%%@@@%@@@@@@%%%%%%%%%##############
+@@@@@@@@@@@@@@@@@@%%%%%%%%@@@@@@@@%%%@@@@@%%#####%#####%%###%@@%%%%@@@@@@@@@@@%%%%%%%%%%%%%###%%%%`;
+
+    async function typeLine(text, element, speed = 15) {
+        return new Promise(resolve => {
+            if (text === "" || text.includes("<span") || text.includes("<div")) {
+                element.innerHTML = text;
+                resolve();
+                return;
+            }
+            let i = 0;
+            function typeWriter() {
+                if (i < text.length) {
+                    element.innerHTML += text.charAt(i);
+                    i++;
+                    window.scrollTo(0, document.body.scrollHeight);
+                    setTimeout(typeWriter, speed);
+                } else { resolve(); }
+            }
+            typeWriter();
+        });
+    }
+
+    async function runBootSequence() {
+        for (let i = 0; i < bootSequence.length; i++) {
+            if (bootSequence[i] === asciiLogo) {
+                const wrapper = document.createElement('div');
+                wrapper.dataset.boot = 'true';
+                wrapper.className = 'logo-portrait-wrapper';
+
+                const logoDiv = document.createElement('div');
+                logoDiv.className = 'ascii-art logo-left';
+                logoDiv.textContent = asciiLogo;
+
+                const portraitDiv = document.createElement('div');
+                portraitDiv.className = 'portrait-right';
+                portraitDiv.textContent = portraitArt;
+
+                wrapper.appendChild(logoDiv);
+                wrapper.appendChild(portraitDiv);
+                terminalOutput.appendChild(wrapper);
+            } else {
+                const line = document.createElement('div');
+                line.dataset.boot = 'true';
+                terminalOutput.appendChild(line);
+                await typeLine(bootSequence[i], line, 20);
+            }
+        }
+        isTyping = false;
+        inputLine.style.display = 'flex';
+        focusInput();
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function printToTerminal(text, isCommand = false) {
+        const line = document.createElement('div');
+        line.innerHTML = text;
+        line.style.marginBottom = isCommand ? '10px' : '20px';
+        terminalOutput.appendChild(line);
+        window.scrollTo(0, document.body.scrollHeight);
+    }
+
+    function printWithTypingAnimation(text, delay = 0.13, clipDuration = 0.3) {
+        const lines = text.split('\n');
+        const container = document.createElement('div');
+        container.style.marginBottom = '20px';
+
+        isTyping = true;
+        inputLine.style.display = 'none';
+
+        lines.forEach((line, index) => {
+            const lineDiv = document.createElement('div');
+            lineDiv.innerHTML = line || ' ';
+            lineDiv.className = 'css-typing-line';
+            lineDiv.style.animationDelay = `${index * delay}s`;
+            lineDiv.style.animationDuration = `${clipDuration}s`;
+            container.appendChild(lineDiv);
+        });
+
+        terminalOutput.appendChild(container);
+        window.scrollTo(0, document.body.scrollHeight);
+
+        const totalAnimationTime = (lines.length * delay + clipDuration) * 1000;
+        setTimeout(() => {
+            isTyping = false;
+            inputLine.style.display = 'flex';
+            focusInput();
+            window.scrollTo(0, document.body.scrollHeight);
+        }, totalAnimationTime);
+    }
+
+    function executeCommand(cmd) {
+        const rawCmd = cmd.trim();
+        const cleanCmd = rawCmd.toLowerCase();
+        if (rawCmd === '') return;
+
+        printToTerminal(`${promptText}${rawCmd}`, true);
+        commandHistory.push(rawCmd);
+        historyIndex = commandHistory.length;
+
+        if (cleanCmd === 'clear') {
+            const nonBootEls = Array.from(terminalOutput.children).filter(el => !el.dataset.boot);
+            if (nonBootEls.length === 0) return;
+
+            isTyping = true;
+            inputLine.style.display = 'none';
+
+            const delay = 0.06;
+            nonBootEls.reverse().forEach((el, index) => {
+                const children = el.querySelectorAll('.css-typing-line');
+                if (children.length > 0) {
+                    Array.from(children).reverse().forEach((child, ci) => {
+                        child.style.animationDelay = `${(index * 0.15) + (ci * delay)}s`;
+                        child.classList.add('css-detype-line');
+                        child.classList.remove('css-typing-line');
+                    });
+                } else {
+                    el.style.transition = `opacity 0.2s ease ${index * 0.08}s`;
+                    el.style.opacity = '0';
+                }
+            });
+
+            const totalTime = (nonBootEls.length * 0.15 + 0.4) * 1000;
+            setTimeout(() => {
+                nonBootEls.forEach(el => el.remove());
+                isTyping = false;
+                inputLine.style.display = 'flex';
+                focusInput();
+            }, totalTime);
+            return;
+        }
+
+        if (fileSystem[cleanCmd]) {
+            if (cleanCmd === 'about') {
+                printWithTypingAnimation(fileSystem[cleanCmd], 0.4, 0.6);
+            } else {
+                printWithTypingAnimation(fileSystem[cleanCmd]);
+            }
+            return;
+        }
+
+        switch (cleanCmd) {
+            case 'sudo':
+                printWithTypingAnimation(`<span class="error">noah is not in the sudoers file. This incident will be reported.</span>`);
+                break;
+            case 'whoami':
+                printWithTypingAnimation('guest_user');
+                break;
+            case 'date':
+                printWithTypingAnimation(new Date().toString());
+                break;
+            case 'matrix':
+                document.body.classList.toggle('matrix-mode');
+                printWithTypingAnimation('Matrix mode toggled.');
+                break;
+            case 'ls':
+                printWithTypingAnimation('index.html  <span class="highlight">assets/</span>  <span class="highlight">src/</span>  README.md  secrets.txt');
+                break;
+            case 'cat secrets.txt':
+                printWithTypingAnimation('Nice try. Permission denied.');
+                break;
+            default:
+                if (cleanCmd.startsWith('echo ')) {
+                    printWithTypingAnimation(rawCmd.substring(5));
+                } else {
+                    printWithTypingAnimation(`Command not found: ${rawCmd}. Type '<span class="highlight">help</span>' for available commands.`);
+                }
+        }
+    }
+
+    hiddenInput.addEventListener('input', function() {
+        if (!isTyping) typedInput.textContent = this.value;
+    });
+
+    hiddenInput.addEventListener('keydown', function(e) {
+        if (isTyping) { e.preventDefault(); return; }
+        if (e.key === 'Enter') {
+            const cmd = this.value;
+            this.value = '';
+            typedInput.textContent = '';
+            executeCommand(cmd);
+        } else if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (historyIndex > 0) { historyIndex--; this.value = commandHistory[historyIndex]; typedInput.textContent = this.value; }
+        } else if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (historyIndex < commandHistory.length - 1) { historyIndex++; this.value = commandHistory[historyIndex]; typedInput.textContent = this.value; }
+            else { historyIndex = commandHistory.length; this.value = ''; typedInput.textContent = ''; }
+        }
+    });
+
+    function submitMobile() {
+        if (isTyping) return;
+        const cmd = mobileInput.value;
+        mobileInput.value = '';
+        executeCommand(cmd);
+    }
+
+    mobileSend.addEventListener('click', submitMobile);
+    mobileInput.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') { e.preventDefault(); submitMobile(); }
+    });
+
+    document.querySelectorAll('.shortcut-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (isTyping) return;
+            executeCommand(this.dataset.cmd);
+        });
+    });
+
+    function focusInput() {
+        if (isTyping) return;
+        const isMobile = window.matchMedia('(max-width: 768px), (hover: none)').matches;
+        if (!isMobile) hiddenInput.focus();
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#mobile-bar')) focusInput();
+    });
+    document.addEventListener('keydown', focusInput);
+
+    window.onload = function() { runBootSequence(); };
+</script>
+</body>
+</html>
